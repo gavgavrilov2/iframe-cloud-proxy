@@ -10,6 +10,15 @@ export default async function handler(req, res) {
 
   const PROXY_BASE = 'https://iframe-cloud-proxy.vercel.app/api/proxy';
 
+  function resolveUrl(segUrl, baseDir) {
+    if (segUrl.startsWith('http')) return segUrl;
+    return baseDir + segUrl;
+  }
+
+  function rewriteUrl(u, baseDir) {
+    return PROXY_BASE + '?url=' + encodeURIComponent(resolveUrl(u, baseDir));
+  }
+
   try {
     const resp = await fetch(url, {
       headers: {
@@ -29,23 +38,25 @@ export default async function handler(req, res) {
       const text = await resp.text();
       const baseUrl = url.replace(/[?#].*$/, '');
       const baseDir = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
-      const proxyBase = PROXY_BASE + '?url=';
       const lines = text.split('\n');
       const rewritten = [];
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trimEnd();
-        if (!line || line.startsWith('#')) {
-          rewritten.push(line);
-          continue;
+        let line = lines[i];
+
+        line = line.replace(/URI="([^"]+)"/gi, function(match, u) {
+          return 'URI="' + rewriteUrl(u, baseDir) + '"';
+        });
+
+        if (line.trim() && !line.trim().startsWith('#')) {
+          let segUrl = line.trim();
+          if (!segUrl.startsWith('http')) {
+            segUrl = baseDir + segUrl;
+          }
+          line = PROXY_BASE + '?url=' + encodeURIComponent(segUrl);
         }
 
-        let segUrl = line;
-        if (!segUrl.startsWith('http')) {
-          segUrl = baseDir + segUrl;
-        }
-
-        rewritten.push(proxyBase + encodeURIComponent(segUrl));
+        rewritten.push(line);
       }
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
