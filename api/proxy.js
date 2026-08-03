@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       h['Referer'] = 'https://api.ortified.ws/';
     } else if (targetUrl.includes('cinemar.cc')) {
       h['Referer'] = 'https://uakinogo.io/';
-    } else if (targetUrl.includes('cfnd.cinemap.cc') || targetUrl.includes('cdnd.cinemap.cc')) {
+    } else if (targetUrl.includes('cinemap.cc')) {
       h['Referer'] = 'https://cinemar.cc/';
       h['Origin'] = 'https://cinemar.cc';
     } else if (targetUrl.includes('interkh.com') || targetUrl.includes('delivembd')) {
