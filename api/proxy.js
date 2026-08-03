@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing url param' });
 
+  const customReferer = req.query.referer || '';
   const PROXY_BASE = 'https://iframe-cloud-proxy.vercel.app/api/proxy';
 
   function resolveUrl(segUrl, baseDir) {
@@ -16,17 +17,37 @@ export default async function handler(req, res) {
   }
 
   function rewriteUrl(u, baseDir) {
-    return PROXY_BASE + '?url=' + encodeURIComponent(resolveUrl(u, baseDir));
+    var full = resolveUrl(u, baseDir);
+    var r = PROXY_BASE + '?url=' + encodeURIComponent(full);
+    if (customReferer) r += '&referer=' + encodeURIComponent(customReferer);
+    return r;
+  }
+
+  function buildHeaders(targetUrl) {
+    var h = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+    };
+    if (customReferer) {
+      h['Referer'] = customReferer;
+    } else if (targetUrl.includes('ortified')) {
+      h['Referer'] = 'https://api.ortified.ws/';
+    } else if (targetUrl.includes('cinemar.cc')) {
+      h['Referer'] = 'https://uakinogo.io/';
+    } else if (targetUrl.includes('cfnd.cinemap.cc') || targetUrl.includes('cdnd.cinemap.cc')) {
+      h['Referer'] = 'https://cinemar.cc/';
+      h['Origin'] = 'https://cinemar.cc';
+    } else if (targetUrl.includes('interkh.com') || targetUrl.includes('delivembd')) {
+      h['Referer'] = 'https://kinokrad.my';
+      h['Origin'] = 'https://kinokrad.my';
+    }
+    return h;
   }
 
   try {
-    const resp = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Referer': 'https://api.ortified.ws/'
-      },
+    var resp = await fetch(url, {
+      headers: buildHeaders(url),
       redirect: 'follow'
     });
 
@@ -54,6 +75,7 @@ export default async function handler(req, res) {
             segUrl = baseDir + segUrl;
           }
           line = PROXY_BASE + '?url=' + encodeURIComponent(segUrl);
+          if (customReferer) line += '&referer=' + encodeURIComponent(customReferer);
         }
 
         rewritten.push(line);
